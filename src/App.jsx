@@ -1,4 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { 
+  useGLTF, 
+  PresentationControls, 
+  Environment, 
+  ContactShadows, 
+  Float, 
+  MeshTransmissionMaterial,
+  Sparkles,
+  Text
+} from '@react-three/drei';
+import * as THREE from 'three';
 import { 
   motion, 
   AnimatePresence, 
@@ -6,15 +18,143 @@ import {
   useSpring, 
   useMotionValue, 
   useMotionTemplate,
-  useInView
+  useInView 
 } from 'framer-motion';
 import { 
   Droplets, Menu, X, Phone, MapPin, Award, Factory, 
-  ChevronRight, User, Lock, ArrowRight, Star, ShoppingCart, 
-  Loader2, Trash2, CheckCircle, AlertCircle, Home, ShoppingBag, Settings
+  User, Lock, ArrowRight, Star, ShoppingCart, 
+  Loader2, Trash2, CheckCircle, AlertCircle, Home, ShoppingBag 
 } from 'lucide-react';
 
-// --- 1. TOAST NOTIFICATION (Mobile Optimized: Top Center) ---
+// --- 1. THE 3D BOTTLE COMPONENT (Procedural Generation) ---
+const JalsaBottle = () => {
+  // Bottle Body Geometry
+  return (
+    <group dispose={null}>
+      {/* --- Floating Animation Wrapper --- */}
+      <Float speed={2} rotationIntensity={1} floatIntensity={2}>
+        
+        {/* 1. MAIN BOTTLE GLASS (Blue Tinted Plastic/Glass) */}
+        <mesh position={[0, 0, 0]} castShadow>
+          {/* Cylinder: TopRadius, BottomRadius, Height, Segments */}
+          <cylinderGeometry args={[0.7, 0.7, 3.5, 64]} />
+          <MeshTransmissionMaterial 
+            backside 
+            backsideThickness={5} 
+            thickness={2} 
+            chromaticAberration={0.1} 
+            anisotropy={0.1} 
+            clearcoat={1} 
+            clearcoatRoughness={0} 
+            color="#a5f3fc" // Light Cyan Tint
+            resolution={512}
+            transmission={0.95}
+            roughness={0.05}
+            ior={1.5}
+          />
+        </mesh>
+
+        {/* 2. BOTTLE NECK */}
+        <mesh position={[0, 1.9, 0]}>
+          <cylinderGeometry args={[0.25, 0.7, 0.5, 64]} />
+          <MeshTransmissionMaterial 
+            color="#a5f3fc" 
+            transmission={0.95} 
+            roughness={0.05} 
+            clearcoat={1}
+          />
+        </mesh>
+
+        {/* 3. CAP (Blue Plastic) */}
+        <mesh position={[0, 2.3, 0]}>
+          <cylinderGeometry args={[0.3, 0.3, 0.4, 32]} />
+          <meshStandardMaterial 
+            color="#0284c7" // Deep Blue
+            roughness={0.3} 
+            metalness={0.1} 
+          />
+        </mesh>
+
+        {/* 4. WATER INSIDE (Liquid Effect) */}
+        <mesh position={[0, -0.2, 0]}>
+          <cylinderGeometry args={[0.62, 0.62, 2.8, 32]} />
+          <meshPhysicalMaterial 
+            color="#0ea5e9" // Sky Blue Water
+            transmission={0.4}
+            opacity={0.8}
+            roughness={0}
+            ior={1.33} // Refractive index of water
+          />
+        </mesh>
+
+        {/* 5. LABEL (Jalsa Branding) */}
+        <mesh position={[0, 0.2, 0]}>
+          <cylinderGeometry args={[0.71, 0.71, 1.2, 64, 1, true]} />
+          <meshStandardMaterial 
+            color="#ffffff" 
+            transparent 
+            opacity={0.9} 
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+        
+        {/* Label Text (Simulated) */}
+        <Text 
+          position={[0, 0.4, 0.72]} 
+          fontSize={0.3} 
+          color="#0ea5e9" 
+          font="https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hjp-Ek-_EeA.woff"
+          anchorX="center" 
+          anchorY="middle"
+        >
+          Jalsa
+        </Text>
+        <Text 
+          position={[0, 0.1, 0.72]} 
+          fontSize={0.1} 
+          color="#64748b" 
+          anchorX="center" 
+          anchorY="middle"
+        >
+          PREMIUM WATER
+        </Text>
+
+        {/* 6. BUBBLES / SPARKLES AROUND */}
+        <Sparkles count={50} scale={4} size={4} speed={0.4} opacity={0.5} color="#cffafe" />
+      
+      </Float>
+    </group>
+  );
+};
+
+// --- 2. THE 3D SCENE CANVAS ---
+const BottleScene = () => {
+  return (
+    <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 0, 8], fov: 45 }}>
+      {/* Lighting environment (Studio feel) */}
+      <Environment preset="city" />
+      <ambientLight intensity={0.5} />
+      <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1} castShadow />
+
+      {/* Controls: Allows user to rotate bottle slightly, snaps back */}
+      <PresentationControls 
+        global 
+        config={{ mass: 2, tension: 500 }} 
+        snap={{ mass: 4, tension: 1500 }} 
+        rotation={[0, 0.3, 0]} 
+        polar={[-Math.PI / 4, Math.PI / 4]} 
+        azimuth={[-Math.PI / 4, Math.PI / 4]}
+      >
+        <JalsaBottle />
+      </PresentationControls>
+
+      {/* Shadow at bottom */}
+      <ContactShadows position={[0, -2.5, 0]} opacity={0.4} scale={10} blur={2.5} far={4} />
+    </Canvas>
+  );
+};
+
+// --- 3. TOAST NOTIFICATION ---
 const ToastContainer = ({ toasts, removeToast }) => (
   <div className="fixed top-4 left-0 right-0 z-[130] flex flex-col items-center gap-2 pointer-events-none px-4">
     <AnimatePresence>
@@ -42,7 +182,7 @@ const ToastContainer = ({ toasts, removeToast }) => (
   </div>
 );
 
-// --- 2. SPOTLIGHT CARD ---
+// --- 4. SPOTLIGHT CARD ---
 function SpotlightCard({ children, className = "" }) {
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -75,7 +215,7 @@ function SpotlightCard({ children, className = "" }) {
   );
 }
 
-// --- 3. ANIMATED COUNTER ---
+// --- 5. ANIMATED COUNTER ---
 const Counter = ({ from, to, duration = 2 }) => {
   const nodeRef = useRef();
   const inView = useInView(nodeRef, { once: true });
@@ -97,7 +237,7 @@ const Counter = ({ from, to, duration = 2 }) => {
   return <span ref={nodeRef}>{from}</span>;
 };
 
-// --- 4. PRELOADER ---
+// --- 6. PRELOADER ---
 const Preloader = ({ finishLoading }) => {
   return (
     <motion.div
@@ -280,7 +420,7 @@ function App() {
             </div>
           </nav>
 
-          {/* --- BOTTOM NAV (Mobile Only - The "App" Feel) --- */}
+          {/* --- BOTTOM NAV (Mobile Only) --- */}
           <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-slate-200 z-50 px-6 py-3 pb-safe">
              <div className="flex justify-between items-center">
                 <button onClick={() => { setActiveTab('home'); document.getElementById('home').scrollIntoView({behavior:'smooth'}); }} className={`flex flex-col items-center gap-1 ${activeTab==='home' ? 'text-cyan-600' : 'text-slate-400'}`}>
@@ -311,7 +451,7 @@ function App() {
              </div>
           </div>
 
-          {/* --- CART DRAWER (Bottom Sheet on Mobile, Sidebar on Desktop) --- */}
+          {/* --- CART DRAWER --- */}
           <AnimatePresence>
             {cartOpen && (
               <>
@@ -325,7 +465,6 @@ function App() {
                     ${isMobile ? 'bottom-0 left-0 right-0 h-[85vh] rounded-t-[2rem]' : 'right-0 top-0 h-full w-full max-w-md'}
                   `}
                 >
-                  {/* Handle Bar for Mobile */}
                   {isMobile && <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 mb-2" />}
 
                   <div className="flex justify-between items-center p-6 border-b">
@@ -366,9 +505,8 @@ function App() {
             )}
           </AnimatePresence>
 
-          {/* --- HERO SECTION --- */}
+          {/* --- HERO SECTION WITH 3D BOTTLE --- */}
           <section id="home" className="relative min-h-[90vh] md:min-h-screen flex items-center pt-24 md:pt-20 overflow-hidden bg-gradient-to-b from-blue-50 to-white">
-             {/* Background Blobs */}
              <div className="absolute top-0 right-0 w-[70vw] h-[70vw] bg-cyan-200/20 rounded-full blur-[80px] translate-x-1/2 -translate-y-1/4" />
              <div className="absolute bottom-0 left-0 w-[70vw] h-[70vw] bg-blue-300/20 rounded-full blur-[80px] -translate-x-1/2 translate-y-1/4" />
 
@@ -377,7 +515,7 @@ function App() {
                 initial={{ opacity: 0, y: 30 }} 
                 animate={{ opacity: 1, y: 0 }} 
                 transition={{ duration: 0.8 }}
-                className="order-2 md:order-1 text-center md:text-left"
+                className="order-2 md:order-1 text-center md:text-left pointer-events-none md:pointer-events-auto"
               >
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-sm border border-blue-100 text-blue-600 text-[10px] font-bold tracking-widest mb-6 uppercase">
                   <Star className="w-3 h-3 fill-blue-600" /> Premium Water
@@ -389,12 +527,11 @@ function App() {
                 <p className="text-lg md:text-xl text-slate-500 mb-8 max-w-lg mx-auto md:mx-0 leading-relaxed font-light">
                   From <strong>Mokampura's</strong> deep aquifers. 7-step purification for the elite taste of Rajasthan.
                 </p>
-                <div className="flex flex-col md:flex-row gap-4 justify-center md:justify-start">
+                <div className="flex flex-col md:flex-row gap-4 justify-center md:justify-start pointer-events-auto">
                   <Button primary onClick={() => setActiveModal('partner')}>Become Partner</Button>
                   <Button onClick={() => document.getElementById('products').scrollIntoView({behavior: 'smooth'})}>Our Products</Button>
                 </div>
                 
-                {/* Mobile Stats */}
                 <div className="grid grid-cols-2 gap-4 mt-10 md:mt-12 border-t border-slate-200/60 pt-6">
                     <div>
                       <div className="text-2xl font-bold text-slate-900"><Counter from={0} to={5000} />+</div>
@@ -407,29 +544,30 @@ function App() {
                 </div>
               </motion.div>
               
-              {/* Bottle Image */}
+              {/* --- 3D BOTTLE SCENE (REPLACED IMAGE) --- */}
               <motion.div 
                 initial={{ opacity: 0, scale: 0.9 }} 
                 animate={{ opacity: 1, scale: 1 }} 
                 transition={{ duration: 1 }}
-                className="order-1 md:order-2 relative flex justify-center h-[400px] md:h-[600px] items-center"
+                className="order-1 md:order-2 relative flex justify-center h-[500px] md:h-[700px] w-full"
               >
-                 <div className="absolute w-[300px] h-[300px] md:w-[400px] md:h-[400px] rounded-full border border-cyan-200/50 flex items-center justify-center">
-                    <div className="w-[200px] h-[200px] md:w-[300px] md:h-[300px] rounded-full bg-gradient-to-tr from-cyan-100 to-blue-50 blur-3xl"></div>
+                 {/* The 3D Canvas */}
+                 <div className="w-full h-full cursor-move">
+                    <BottleScene />
                  </div>
                  
-                 <motion.img 
-                   src="https://png.pngtree.com/png-vector/20250325/ourmid/pngtree-water-bottle-png-image_15868794.png"
-                   alt="Jalsa Bottle"
-                   className="relative z-10 h-[100%] md:h-[110%] w-auto object-contain drop-shadow-2xl"
-                   animate={{ y: [-15, 15, -15] }} 
-                   transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
-                 />
+                 {/* Instruction Hint */}
+                 <motion.div 
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} delay={2}
+                  className="absolute bottom-10 right-10 bg-white/50 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold text-slate-500 pointer-events-none"
+                 >
+                   Try rotating me ↻
+                 </motion.div>
               </motion.div>
             </div>
           </section>
 
-          {/* --- PRODUCTS SECTION (Mobile: Horizontal Scroll, Desktop: Grid) --- */}
+          {/* --- PRODUCTS SECTION --- */}
           <section id="products" className="py-20 bg-slate-950 text-white relative overflow-hidden">
             <div className="container mx-auto">
               <div className="px-6 mb-10 md:mb-16 md:text-center">
@@ -437,7 +575,6 @@ function App() {
                 <h2 className="text-3xl md:text-5xl font-bold mt-2">Hydration for Every Need</h2>
               </div>
               
-              {/* Responsive Container: Snap Scroll on Mobile */}
               <div className="flex md:grid md:grid-cols-3 gap-6 overflow-x-auto md:overflow-visible snap-x snap-mandatory px-6 pb-8 hide-scrollbar">
                 {products.map((item, idx) => (
                   <SpotlightCard key={idx} className="min-w-[85vw] md:min-w-0 snap-center rounded-3xl p-6 md:p-8 flex flex-col bg-slate-900 border-slate-800">
@@ -524,7 +661,7 @@ function App() {
         </>
       )}
 
-      {/* --- MODALS (Optimized for Mobile) --- */}
+      {/* --- MODALS --- */}
       <AnimatePresence>
         {activeModal && (
           <motion.div 
@@ -537,9 +674,7 @@ function App() {
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
               className="bg-white w-full max-w-md rounded-t-[2rem] md:rounded-3xl overflow-hidden relative shadow-2xl"
             >
-              {/* Modal Handle */}
               <div className="md:hidden w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 absolute left-0 right-0 top-0 z-30" />
-              
               <button onClick={() => setActiveModal(null)} className="hidden md:block absolute top-4 right-4 text-white z-20"><X size={20}/></button>
 
               <div className="bg-gradient-to-br from-blue-600 to-cyan-500 p-8 pt-12 text-white text-center">
